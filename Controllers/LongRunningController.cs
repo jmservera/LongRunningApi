@@ -26,20 +26,22 @@ namespace LongRunningApi.Controllers
         }
 
         [HttpGet]
-        public IActionResult Subscribe(int seconds=15)
+        public IActionResult Subscribe(int seconds = 15)
         {
             return new StreamResult(OnStreamAvailabe, HttpContext.RequestAborted, "application/json", seconds);
         }
 
         void OnStreamAvailabe(Stream stream, CancellationToken requestAborted, int seconds)
         {
-            bool finished=false;
+            bool finished = false;
 
-            var t=Task.Run(async ()=>{
-                await using(var writer = new StreamWriter(stream)){
+            var t = Task.Run(async () =>
+            {
+                await using (var writer = new StreamWriter(stream))
+                {
                     writer.ConfigureAwait(false);
                     await writer.WriteAsync("{\"b\":\"");
-                    while(true)
+                    while (true)
                     {
                         await writer.WriteAsync(".");
                         await writer.FlushAsync();
@@ -47,7 +49,7 @@ namespace LongRunningApi.Controllers
                         {
                             break;
                         }
-                        await Task.Delay(1000,requestAborted);
+                        await Task.Delay(1000, requestAborted);
                         if (requestAborted.IsCancellationRequested || finished)
                         {
                             break;
@@ -59,15 +61,20 @@ namespace LongRunningApi.Controllers
 
             });
 
-            for (int i = 0; i < seconds; i++){
+            for (int i = 0; i < seconds; i++)
+            {
                 Thread.Sleep(1000);
                 if (requestAborted.IsCancellationRequested || finished)
                 {
                     break;
                 }
             }
-            finished=true;
-            t.Wait();
+            finished = true;
+
+            if (!t.IsCanceled)
+            {
+                t.Wait();
+            }
         }
     }
 }

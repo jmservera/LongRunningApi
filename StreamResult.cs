@@ -26,7 +26,9 @@ namespace LongRunningApi
 
             public Task ExecuteResultAsync(ActionContext context)
             {
+                //use 202 to indicate that the server is still processing the request
                 context.HttpContext.Response.StatusCode= (int) HttpStatusCode.Accepted;
+                
                 var stream = context.HttpContext.Response.Body;
                 context.HttpContext.Response.ContentType = contentType;
                 onStreamAvailabe(stream, cancellationToken, seconds);
