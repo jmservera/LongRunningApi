@@ -1,13 +1,52 @@
 {
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
+        {
+            "label": "build4",
+            "type": "shell",
+            "command": "msbuild",
+            "args": [
+                "/property:GenerateFullPaths=true",
+                "/t:build",
+                "/consoleloggerparameters:NoSummary",
+                "${workspaceFolder}/dotnet4.5.2/LongRunningLegacy.sln"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "windows": {
+                "command": "c:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\MSBuild\\Current\\Bin\\MSBuild.exe"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "iisexpress-WebApp",
+            "type": "shell",
+            "windows": {
+                "command": "C:\\Program Files (x86)\\IIS Express\\iisexpress.exe"
+            },
+            "args": [
+                "/path:${workspaceRoot}\\dotnet4.5.2\\LongRunningLegacy",
+                "/port:52945"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "dependsOn":"build4"
+        },
         {
             "label": "build",
             "command": "dotnet",
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/LongRunningApi.csproj",
+                "${workspaceFolder}/dotnet5/LongRunningApi.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -19,7 +58,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/LongRunningApi.csproj",
+                "${workspaceFolder}/dotnet5/LongRunningApi.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -32,7 +71,7 @@
             "args": [
                 "watch",
                 "run",
-                "${workspaceFolder}/LongRunningApi.csproj",
+                "${workspaceFolder}/dotnet5/LongRunningApi.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -44,7 +83,7 @@
             "type": "process",
             "args": [
                 "clean",
-                "${workspaceFolder}",
+                "${workspaceFolder}/dotnet5",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -56,7 +95,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}",
+                "${workspaceFolder}/dotnet5",
                 "--configuration",
                 "Release",
                 "/property:GenerateFullPaths=true",
@@ -66,4 +105,5 @@
             "dependsOn": "clean"
         }
     ]
+
 }

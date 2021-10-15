@@ -40,7 +40,7 @@ namespace LongRunningApi.Controllers
                 await using (var writer = new StreamWriter(stream))
                 {
                     writer.ConfigureAwait(false);
-                    await writer.WriteAsync("{\"b\":\"");
+                    await writer.WriteAsync("{ \"b\" : \"");
                     while (true)
                     {
                         await writer.WriteAsync(".");
@@ -55,7 +55,7 @@ namespace LongRunningApi.Controllers
                             break;
                         }
                     }
-                    await writer.WriteAsync("\"}");
+                    await writer.WriteAsync("\" }");
                     await writer.FlushAsync();
                 }
 
