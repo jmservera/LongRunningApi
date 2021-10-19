@@ -134,13 +134,9 @@ jobs:
             }
           }
         
-      - name: Restore dependencies
-        working-directory: dotnet4.5.2
-        run: dotnet restore
-
       - name: Build
         working-directory: dotnet4.5.2
-        run: dotnet build --no-restore
+        run: msbuild LongRuningLegacy.sln /p:Configuration=Release
 
       - name: Convert sarif for uploading to GitHub
         uses: security-code-scan/security-code-scan-results-action@main
