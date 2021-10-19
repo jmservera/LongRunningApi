@@ -19,9 +19,120 @@ jobs:
       - uses: actions/checkout@v2
       - uses: nuget/setup-nuget@v1.0.5
       - uses: microsoft/setup-msbuild@v1.0.2
-      
+             
       - name: Set up projects for analysis
-        uses: security-code-scan/security-code-scan-add-action@main
+        #uses: security-code-scan/security-code-scan-add-action@main
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop";
+          [string]$SecurityCodeScanPackageName = 'SecurityCodeScan.VS2019'
+          [string]$SecurityCodeScanPackageVersion = '5.1.0'
+          [string]$SecurityCodeScanPackagePath = $null
+          
+          foreach ($projectFile in Get-ChildItem -Path . -Include *.csproj, *.vbproj -File -Recurse -Force) {
+          
+            $project = [xml](Get-Content -LiteralPath $projectFile.FullName -Raw)
+                  
+            $propertyGroup = $project.CreateElement('PropertyGroup', $project.Project.NamespaceURI)
+            $errorLog = $project.CreateElement('ErrorLog', $project.Project.NamespaceURI)
+            $errorLog.InnerText = 'analysis.sarif'
+            $propertyGroup.AppendChild($errorLog) | Out-Null
+            $additionalFileItemNames = $project.CreateElement("AdditionalFileItemNames", $project.Project.NamespaceURI)
+            $additionalFileItemNames.InnerText = '$(AdditionalFileItemNames);Content'
+            $propertyGroup.AppendChild($additionalFileItemNames) | Out-Null
+            $project.Project.AppendChild($propertyGroup) | Out-Null
+            $project.Save($projectFile.FullName)
+            $packagesConfigFile = $projectFile.Directory.GetFileSystemInfos('packages.config')
+          
+            if ($project.Project.Sdk -or ($project.Project.ItemGroup.PackageReference | ? { $_ }) -or (-not $packagesConfigFile.Exists)) {
+          
+              $project.Project.ItemGroup.PackageReference |
+              Where-Object Include -like 'SecurityCodeScan*' |
+              ForEach-Object { $_.SelectSingleNode('..').RemoveChild($_) | Out-Null }
+          
+              $itemGroup = $project.CreateElement('ItemGroup')
+              $packageReference = $project.CreateElement('PackageReference')
+              $packageReferenceInclude = $project.CreateAttribute('Include')
+              $packageReferenceInclude.Value = $SecurityCodeScanPackageName
+              $packageReference.Attributes.Append($packageReferenceInclude) | Out-Null
+              $packageReferenceVersion = $project.CreateAttribute('Version')
+              $packageReferenceVersion.Value = $SecurityCodeScanPackageVersion
+              $packageReference.Attributes.Append($packageReferenceVersion) | Out-Null
+              $packageReferencePrivateAssets = $project.CreateAttribute('PrivateAssets')
+              $packageReferencePrivateAssets.Value = 'All'
+              $packageReference.Attributes.Append($packageReferencePrivateAssets) | Out-Null
+              $packageReferenceIncludeAssets = $project.CreateAttribute('IncludeAssets')
+              $packageReferenceIncludeAssets.Value = 'runtime; build; native; contentfiles; analyzers; buildtransitive'
+              $packageReference.Attributes.Append($packageReferenceIncludeAssets) | Out-Null
+              $itemGroup.AppendChild($packageReference) | Out-Null
+              $project.Project.AppendChild($itemGroup) | Out-Null
+          
+              if (-not $project.Project.Sdk) {
+                $propertyGroup = $project.CreateElement('PropertyGroup')
+                $restoreProjectStyle = $project.CreateElement('RestoreProjectStyle')
+                $restoreProjectStyle.InnerText = 'PackageReference'
+                $propertyGroup.AppendChild($restoreProjectStyle) | Out-Null
+                $project.Project.AppendChild($propertyGroup) | Out-Null
+              }
+          
+              $project.Save($projectFile.FullName)
+            }
+            else {
+          
+              if (-not $SecurityCodeScanPackagePath) {
+          
+                if (-not (Test-Path packages -PathType Container)) {
+                  $SecurityCodeScanPackagePath = (New-Item -Name packages -ItemType Directory).FullName
+                }
+                else {
+                  $SecurityCodeScanPackagePath = (Get-Item -Path packages).FullName
+                }
+          
+                nuget install $SecurityCodeScanPackageName -Version $SecurityCodeScanPackageVersion -OutputDirectory $SecurityCodeScanPackagePath
+              }
+          
+              $project.Project.ItemGroup.Analyzer |
+              Where-Object Include -like '*SecurityCodeScan*' |
+              ForEach-Object { $_.SelectSingleNode('..').RemoveChild($_) | Out-Null }
+          
+              $propertyGroup = $project.CreateElement('PropertyGroup', $project.Project.NamespaceURI)
+              $restoreProjectStyle = $project.CreateElement('RestoreProjectStyle', $project.Project.NamespaceURI)
+              $restoreProjectStyle.InnerText = 'PackagesConfig'
+              $propertyGroup.AppendChild($restoreProjectStyle) | Out-Null
+              $project.Project.AppendChild($propertyGroup) | Out-Null
+          
+              $itemGroup = $project.CreateElement('ItemGroup', $project.Project.NamespaceURI)
+              $analyzer = $project.CreateElement('Analyzer', $project.Project.NamespaceURI)
+              $analyzerInclude = $project.CreateAttribute('Include')
+              $analyzerInclude.Value = Join-Path -Path $SecurityCodeScanPackagePath -ChildPath "$($SecurityCodeScanPackageName).$($SecurityCodeScanPackageVersion)\analyzers\dotnet\SecurityCodeScan.VS2019.dll"
+              $analyzer.Attributes.Append($analyzerInclude) | Out-Null
+              $itemGroup.AppendChild($analyzer) | Out-Null
+              $project.Project.AppendChild($itemGroup) | Out-Null
+          
+              $project.Save($projectFile.FullName)
+          
+              $packagesConfig = [xml](Get-Content -LiteralPath $packagesConfigFile.FullName -Raw)
+          
+              $packagesConfig.packages.package |
+              Where-Object id -like '*SecurityCodeScan*' |
+              ForEach-Object { $_.SelectSingleNode('..').RemoveChild($_) | Out-Null }
+          
+              $package = $packagesConfig.CreateElement('package')
+              $packageId = $packagesConfig.CreateAttribute('id')
+              $packageId.Value = $SecurityCodeScanPackageName
+              $package.Attributes.Append($packageId) | Out-Null
+              $packageVersion = $packagesConfig.CreateAttribute('version')
+              $packageVersion.Value = $SecurityCodeScanPackageVersion
+              $package.Attributes.Append($packageVersion) | Out-Null
+              $packageDevelopmentDependency = $packagesConfig.CreateAttribute('developmentDependency')
+              $packageDevelopmentDependency.Value = 'true'
+              $package.Attributes.Append($packageDevelopmentDependency) | Out-Null
+          
+              $packagesConfig.packages.AppendChild($package) | Out-Null
+          
+              $packagesConfig.Save($packagesConfigFile.FullName)
+            }
+          }
         
       - name: Restore dependencies
         working-directory: dotnet452
