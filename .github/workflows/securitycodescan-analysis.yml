@@ -24,6 +24,7 @@ jobs:
         #uses: security-code-scan/security-code-scan-add-action@main
         shell: pwsh
         run: |
+          cd dotnet4.5.2
           $ErrorActionPreference = "Stop";
           [string]$SecurityCodeScanPackageName = 'SecurityCodeScan.VS2019'
           [string]$SecurityCodeScanPackageVersion = '5.1.0'
