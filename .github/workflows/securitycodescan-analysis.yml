@@ -135,11 +135,11 @@ jobs:
           }
         
       - name: Restore dependencies
-        working-directory: dotnet452
+        working-directory: dotnet4.5.2
         run: dotnet restore
 
       - name: Build
-        working-directory: dotnet452
+        working-directory: dotnet4.5.2
         run: dotnet build --no-restore
 
       - name: Convert sarif for uploading to GitHub
