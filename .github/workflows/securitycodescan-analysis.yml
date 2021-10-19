@@ -133,7 +133,10 @@ jobs:
               $packagesConfig.Save($packagesConfigFile.FullName)
             }
           }
-        
+      
+      - name: Restore
+        working-directory: dotnet4.5.2
+        run: dotnet restore LongRunningLegacy.sln
       - name: Build
         working-directory: dotnet4.5.2
         run: msbuild LongRunningLegacy.sln /p:Configuration=Release
