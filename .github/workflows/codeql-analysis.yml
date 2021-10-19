@@ -57,6 +57,7 @@ jobs:
         dotnet-version: "5.0.402"
 
     - name: Install dependencies
+      working-directory: dotnet5
       run: dotnet restore
       
     - name: Build
