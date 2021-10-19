@@ -144,10 +144,10 @@ jobs:
 
       - name: Convert sarif for uploading to GitHub
 #        uses: security-code-scan/security-code-scan-results-action@main
+        shell: bash
         run: |
-          cd dotnet4.5.2
           dotnet tool install --global Sarif.Multitool --version 2.3.10
-          outputDir="../results"
+          outputDir="${{ inputs.sarif_directory }}"
           mkdir $outputDir
 
           cat << EOF > convert.js
