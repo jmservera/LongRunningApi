@@ -146,8 +146,9 @@ jobs:
 #        uses: security-code-scan/security-code-scan-results-action@main
         shell: bash
         run: |
+          cd dotnet4.5.2
           dotnet tool install --global Sarif.Multitool --version 2.3.10
-          outputDir="${{ inputs.sarif_directory }}"
+          outputDir="../results"
           mkdir $outputDir
 
           cat << EOF > convert.js
