@@ -28,7 +28,7 @@ jobs:
         run: |
           cd dotnet4.5.2
           $ErrorActionPreference = "Stop";
-          [string]$SecurityCodeScanPackageName = 'SecurityCodeScan.VS2019'
+          [string]$SecurityCodeScanPackageName = 'SecurityCodeScan.VS2017'
           [string]$SecurityCodeScanPackageVersion = '3.0.0'
           [string]$SecurityCodeScanPackagePath = $null
           
