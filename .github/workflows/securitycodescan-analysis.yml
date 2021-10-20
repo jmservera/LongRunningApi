@@ -145,24 +145,17 @@ jobs:
             $xml.Save($project)
           }
       
-      - name: Restore
+      - name: Restore & Build
         working-directory: "${{ matrix.folders }}"
+        shell: pwsh
         run: |
-          if ls *.sln 1> /dev/null 2>&1
-          then
+          if  ( Test-Path -Path *.sln) {
             nuget restore -SolutionDirectory .
-          else
-            dotnet restore
-          fi
-      - name: Build
-        working-directory: "${{ matrix.folders }}"
-        run: |
-          if ls *.sln 1> /dev/null 2>&1
-          then
             msbuild /p:Configuration=Release
-          else
-            dotnet build
-          fi
+            } else {
+              dotnet restore
+              dotnet build
+            }
       - name: Convert sarif for uploading to GitHub
 #        uses: security-code-scan/security-code-scan-results-action@main
         shell: bash
