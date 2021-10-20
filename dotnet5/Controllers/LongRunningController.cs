@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 
 namespace LongRunningApi.Controllers
 {
@@ -22,6 +23,7 @@ namespace LongRunningApi.Controllers
 
         public LongRunningController(ILogger<LongRunningController> logger)
         {
+            MD5 hash= MD5.Create();
             _logger = logger;
         }
 
