@@ -107,7 +107,7 @@ jobs:
               $itemGroup = $project.CreateElement('ItemGroup', $project.Project.NamespaceURI)
               $analyzer = $project.CreateElement('Analyzer', $project.Project.NamespaceURI)
               $analyzerInclude = $project.CreateAttribute('Include')
-              $analyzerInclude.Value = Join-Path -Path $SecurityCodeScanPackagePath -ChildPath "$($SecurityCodeScanPackageName).$($SecurityCodeScanPackageVersion)\analyzers\dotnet\SecurityCodeScan.VS2019.dll"
+              $analyzerInclude.Value = Join-Path -Path $SecurityCodeScanPackagePath -ChildPath "$($SecurityCodeScanPackageName).$($SecurityCodeScanPackageVersion)\analyzers\dotnet\$($SecurityCodeScanPackageName).dll"
               $analyzer.Attributes.Append($analyzerInclude) | Out-Null
               $itemGroup.AppendChild($analyzer) | Out-Null
               $project.Project.AppendChild($itemGroup) | Out-Null
