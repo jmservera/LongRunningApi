@@ -13,19 +13,18 @@ on:
     - cron: '29 7 * * 6'
 
 jobs:
-  SCS:
+  SCS452:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
       - uses: nuget/setup-nuget@v1.0.5
       - uses: microsoft/setup-msbuild@v1.0.2
-
              
       - name: Set up projects for analysis
         #uses: security-code-scan/security-code-scan-add-action@v1.1
         shell: pwsh
         run: |
-          cd dotnet5
+          cd dotnet4.5.2
           $ErrorActionPreference = "Stop";          
 
           foreach($project in Get-ChildItem -Path . -Filter *.??proj -Recurse -Force) {
@@ -148,6 +147,202 @@ jobs:
         shell: bash
         run: |
           cd dotnet4.5.2
+          dotnet tool install --global Sarif.Multitool --version 2.3.10
+          outputDir="../../results"
+          mkdir $outputDir
+
+          cat << EOF > convert.js
+            const fs = require('fs')
+
+            var args = process.argv.slice(2);
+            var sarif = JSON.parse(fs.readFileSync(args[0], "utf8"));
+
+            for (run of sarif.runs) {
+              run.tool.driver.name = "SecurityCodeScan";
+              run.tool.driver.fullName  = "Vulnerability Patterns Detector for C# and VB.NET";
+              run.tool.driver.informationUri  = "https://security-code-scan.github.io";
+
+              run.results = run.results.filter((e => e.ruleId.startsWith("SCS")));
+              run.tool.driver.rules = run.tool.driver.rules.filter((e => e.id.startsWith("SCS")));
+
+              for (let i = 0; i < run.results.length; ++i) {
+                run.results[i].ruleIndex = undefined;
+                run.results[i].relatedLocations = undefined;
+
+                if (run.results[i].locations === undefined) {
+                  const match = run.results[i].message.text.match(/(.*) in (.*)\((\d+)\)(:.*)/);
+                  run.results[i].message.text = match[1];
+                  run.results[i].locations = [{
+                    "physicalLocation" : {
+                      "artifactLocation" : {
+                        "uri" : "file:///" + match[2].replace(/\\\\/g, "/")
+                      },
+                      "region" : {
+                        "startLine": Number(match[3]),
+                        "startColumn": 1,
+                        "endLine": Number(match[3]),
+                        "endColumn": 1
+                      }
+                    }
+                  }];
+                }
+              }
+
+              for (rule of run.tool.driver.rules) {
+                rule.shortDescription = undefined;
+                rule.help = { "text" : rule.helpUri};
+              }
+
+              run.language = undefined;
+            }
+
+            var converted = JSON.stringify(sarif, null, 2);
+            fs.writeFileSync(args[1], converted);
+          EOF
+
+          i=0
+          for sarifFile in $(find ./ -name '*.sarif')
+          do
+            sarif transform $sarifFile --output $sarifFile -f --sarif-output-version Current
+            node convert.js $sarifFile $sarifFile
+            mv $sarifFile $outputDir/$((i++)).sarif
+          done
+
+      - name: Upload sarif
+        uses: github/codeql-action/upload-sarif@v1
+  SCS5:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: nuget/setup-nuget@v1.0.5
+      - uses: microsoft/setup-msbuild@v1.0.2
+             
+      - name: Set up projects for analysis
+        #uses: security-code-scan/security-code-scan-add-action@v1.1
+        shell: pwsh
+        run: |
+          cd dotnet5
+          $ErrorActionPreference = "Stop";          
+
+          foreach($project in Get-ChildItem -Path . -Filter *.??proj -Recurse -Force) {
+
+            $xml = [xml](Get-Content -Path $project)
+            if (-not $xml.Project.xmlns) {
+              dotnet add $project package SecurityCodeScan.VS2019
+            }
+            else {
+              $packageId = "SecurityCodeScan.VS2019"
+              $scs2019packages = Invoke-RestMethod -Uri "https://api-v2v3search-0.nuget.org/query?q=packageid:SecurityCodeScan.VS2019&top=true"
+              $packageVersion = $scs2019packages.data.versions | Sort-Object  -Property version -Descending | Select-Object -First 1
+              $packageVersion = $packageVersion.version
+
+              $packages = $project | Split-Path -parent
+              $packages = Join-Path $packages "packages.config"
+
+              $id = get-random
+              $code = @"
+              using System;
+              using System.Runtime.Versioning;
+              using System.Text.RegularExpressions;
+              using System.Xml;
+
+          public class Program$id
+          {
+            public static void Main(){
+              var projXml = new XmlDocument();
+              projXml.Load(@"$project");
+
+              var xmlNamespace = "http://schemas.microsoft.com/developer/msbuild/2003";
+              var nsmgr = new XmlNamespaceManager(projXml.NameTable);
+              nsmgr.AddNamespace("x", xmlNamespace);
+
+              XmlNode itemGroupNode = projXml.CreateNode(XmlNodeType.Element, "ItemGroup", xmlNamespace);
+              XmlNode analyzerNode = projXml.CreateNode(XmlNodeType.Element, "Analyzer", xmlNamespace);
+              XmlAttribute includeAttribute = projXml.CreateAttribute("Include");
+              includeAttribute.Value = $@"..\packages\$packageId.$packageVersion\analyzers\dotnet\SecurityCodeScan.VS2019.dll";
+              analyzerNode.Attributes.Append(includeAttribute);
+              itemGroupNode.AppendChild(analyzerNode);
+
+              XmlNode yamlAnalyzerNode = projXml.CreateNode(XmlNodeType.Element, "Analyzer", xmlNamespace);
+              XmlAttribute yamlIncludeAttribute = projXml.CreateAttribute("Include");
+              yamlIncludeAttribute.Value = $@"..\packages\$packageId.$packageVersion\analyzers\dotnet\YamlDotNet.dll";
+              yamlAnalyzerNode.Attributes.Append(yamlIncludeAttribute);
+              itemGroupNode.AppendChild(yamlAnalyzerNode);
+
+              projXml.SelectSingleNode("//x:Project", nsmgr).AppendChild(itemGroupNode);
+              projXml.Save(@"$project");
+
+              XmlNode targetFrameworkNode = projXml.SelectSingleNode("//x:TargetFrameworkVersion", nsmgr);
+              var targetFwAttribute = new TargetFrameworkAttribute($".NETFramework, Version={targetFrameworkNode.InnerXml}");
+              Regex p = new Regex(@"\d+(\.\d+)+");
+              Match m = p.Match(targetFwAttribute.FrameworkName);
+              Version targetFwVersion = Version.Parse(m.Value);
+
+              var packagesXml = new XmlDocument();
+              packagesXml.Load(@"$packages");
+
+              var packagesNode = packagesXml.SelectSingleNode("//packages");
+
+              XmlNode packageNode = packagesXml.CreateElement("package");
+
+              XmlAttribute idAttribute = packagesXml.CreateAttribute("id");
+              idAttribute.Value = "$packageId";
+              packageNode.Attributes.Append(idAttribute);
+
+              XmlAttribute versionAttribute = packagesXml.CreateAttribute("version");
+              versionAttribute.Value = "$packageVersion";
+              packageNode.Attributes.Append(versionAttribute);
+
+              XmlAttribute targetFrameworkAttribute = packagesXml.CreateAttribute("targetFramework");
+              targetFrameworkAttribute.Value = $"net{targetFwVersion.ToString().Replace(".", "")}";
+              packageNode.Attributes.Append(targetFrameworkAttribute);
+
+              XmlAttribute developmentDependencyAttribute = packagesXml.CreateAttribute("developmentDependency");
+              developmentDependencyAttribute.Value = "true";
+              packageNode.Attributes.Append(developmentDependencyAttribute);
+
+              packagesNode.AppendChild(packageNode);
+              packagesXml.Save(@"$packages");
+            }
+          }
+          "@
+
+              Add-Type -TypeDefinition $code -Language CSharp
+              Invoke-Expression "[Program$id]::Main()"
+            }
+
+            $xml = [xml](Get-Content -Path $project)
+            if ($xml.Project.xmlns) {
+              $nsmgr = New-Object System.Xml.XmlNamespaceManager $xml.NameTable
+              $nsmgr.AddNamespace('x','http://schemas.microsoft.com/developer/msbuild/2003')
+              $x = 'x:'
+            }
+            $propertyGroups = $xml.SelectNodes("//${x}Project/${x}PropertyGroup", $nsmgr)
+
+            $errorLog = $xml.CreateElement("ErrorLog", $xml.Project.NamespaceURI)
+            $errorLog.set_InnerText("analysis.sarif")
+            $propertyGroups[0].AppendChild($errorLog)
+
+            if (-not $propertyGroups[0].AdditionalFileItemNames) {
+              $additionalFileItemNamesElt = $xml.CreateElement("AdditionalFileItemNames", $xml.Project.NamespaceURI)
+              $additionalFileItemNamesElt.set_InnerText('$(AdditionalFileItemNames);Content')
+              $propertyGroups[0].AppendChild($additionalFileItemNamesElt)
+            }
+
+            $xml.Save($project)
+          }
+      
+      - name: Restore and Build
+        working-directory: dotnet5
+        run: |
+          dotnet restore
+          dotnet build
+
+      - name: Convert sarif for uploading to GitHub
+#        uses: security-code-scan/security-code-scan-results-action@main
+        shell: bash
+        run: |
+          cd dotnet5
           dotnet tool install --global Sarif.Multitool --version 2.3.10
           outputDir="../../results"
           mkdir $outputDir
