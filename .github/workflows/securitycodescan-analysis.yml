@@ -25,7 +25,7 @@ jobs:
         #uses: security-code-scan/security-code-scan-add-action@v1.1
         shell: pwsh
         run: |
-          cd dotnet4.5.2
+          cd dotnet5
           $ErrorActionPreference = "Stop";          
 
           foreach($project in Get-ChildItem -Path . -Filter *.??proj -Recurse -Force) {
