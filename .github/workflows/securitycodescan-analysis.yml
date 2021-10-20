@@ -20,7 +20,7 @@ jobs:
       - uses: nuget/setup-nuget@v1.0.5
       - uses: microsoft/setup-msbuild@v1.0.2
         with:
-          vs-version: 16.4
+          vs-version: 16.5
              
       - name: Set up projects for analysis
         #uses: security-code-scan/security-code-scan-add-action@main
@@ -29,7 +29,7 @@ jobs:
           cd dotnet4.5.2
           $ErrorActionPreference = "Stop";
           [string]$SecurityCodeScanPackageName = 'SecurityCodeScan.VS2019'
-          [string]$SecurityCodeScanPackageVersion = '5.1.0'
+          [string]$SecurityCodeScanPackageVersion = '3.0.0'
           [string]$SecurityCodeScanPackagePath = $null
           
           foreach ($projectFile in Get-ChildItem -Path . -Include *.csproj, *.vbproj -File -Recurse -Force) {
