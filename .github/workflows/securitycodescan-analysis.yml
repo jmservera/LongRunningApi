@@ -66,11 +66,11 @@ jobs:
               analyzerNode.Attributes.Append(includeAttribute);
               itemGroupNode.AppendChild(analyzerNode);
 
-              analyzerNode = projXml.CreateNode(XmlNodeType.Element, "Analyzer", xmlNamespace);
-              XmlAttribute includeAttribute = projXml.CreateAttribute("Include");
-              includeAttribute.Value = $@"..\packages\$packageId.$packageVersion\analyzers\dotnet\YamlDotNet.dll";
-              analyzerNode.Attributes.Append(includeAttribute);
-              itemGroupNode.AppendChild(analyzerNode);
+              XmlNode yamlAnalyzerNode = projXml.CreateNode(XmlNodeType.Element, "Analyzer", xmlNamespace);
+              XmlAttribute yamlIncludeAttribute = projXml.CreateAttribute("Include");
+              yamlIncludeAttribute.Value = $@"..\packages\$packageId.$packageVersion\analyzers\dotnet\YamlDotNet.dll";
+              yamlAnalyzerNode.Attributes.Append(yamlIncludeAttribute);
+              itemGroupNode.AppendChild(yamlAnalyzerNode);
 
               projXml.SelectSingleNode("//x:Project", nsmgr).AppendChild(itemGroupNode);
               projXml.Save(@"$project");
