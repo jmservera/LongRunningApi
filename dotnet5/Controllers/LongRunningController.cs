@@ -23,7 +23,6 @@ namespace LongRunningApi.Controllers
 
         public LongRunningController(ILogger<LongRunningController> logger)
         {
-            MD5 hash= MD5.Create();
             _logger = logger;
         }
 
