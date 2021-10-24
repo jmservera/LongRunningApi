@@ -217,6 +217,7 @@ jobs:
           i=0
           for sarifFile in $(find ./ -name '*.sarif')
           do
+            echo converting $sarifFile
             sarif transform $sarifFile --output $sarifFile -f --sarif-output-version Current
             node convert.js $sarifFile $sarifFile
             mv $sarifFile $outputDir/$((i++)).sarif
