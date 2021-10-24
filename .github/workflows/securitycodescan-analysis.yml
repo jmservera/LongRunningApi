@@ -151,7 +151,7 @@ jobs:
         run: |
           if  ( Test-Path -Path *.sln) {
             nuget restore -SolutionDirectory .
-            msbuild /p:Configuration=Release
+            msbuild /p:Configuration=Release /p:RunCodeAnalysis=true
             } else {
               dotnet restore
               dotnet build
