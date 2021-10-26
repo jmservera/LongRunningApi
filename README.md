@@ -4,6 +4,6 @@ When you have an API call that takes too much time, you should move it to a back
 
 So, use this trick to allow the call run without timing-out only if you cannot move it to a background service right now, but plan to do so later.
 
-This example maintains the underlying connection stream opened, and sends data regularly to the client from an asynchronous task until the long process ends. This technique avoids the problems that happen with any intermediate piece detecting an idle connection, but it may not be suitable for all use cases.
+This example maintains the underlying connection stream opened, and sends data regularly to the client from an asynchronous task until the long process ends, similar to what SignalR does with the [forever frame technique](https://stackoverflow.com/questions/19226761/what-is-the-difference-between-web-sockets-long-polling-server-sent-events-and). This technique avoids the problems that happen with any intermediate piece detecting an idle connection, but it may not be suitable for all use cases.
 
 > This code is not production ready, you will need to do proper error handling, logging and threat protection.
