@@ -151,7 +151,7 @@ jobs:
         run: |
           if  ( Test-Path -Path *.sln) {
             nuget restore -SolutionDirectory .
-            msbuild /p:Configuration=Release
+            msbuild /p:Configuration=Release /p:RunCodeAnalysis=true
             } else {
               dotnet restore
               dotnet build
@@ -217,6 +217,7 @@ jobs:
           i=0
           for sarifFile in $(find ./ -name '*.sarif')
           do
+            echo converting $sarifFile
             sarif transform $sarifFile --output $sarifFile -f --sarif-output-version Current
             node convert.js $sarifFile $sarifFile
             mv $sarifFile $outputDir/$((i++)).sarif
